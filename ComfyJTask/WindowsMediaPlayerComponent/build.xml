@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<project name="windowsmediaplayercomponent" basedir="." default="package">
+    <property name="src" location="src"/>
+    <property name="out" location="out"/>
+    <property name="comfyj-path" location="D:/programs/comfyj-2.10-windows-32_64-bit"/>
+    <property name="idea-lib" location="C:/Program Files (x86)/JetBrains/IntelliJ IDEA Community Edition 12.0.1/lib"/>
+    <property name="buildTest" location="out/tests"/>
+    <property name="test" location="tests"/>
+    <property name="package" location="dist"/>
+    <property name="comfyj-lib" location="${comfyj-path}/lib"/>
+    <property name="comfyj-bin" location="${comfyj-path}/bin"/>
+
+
+    <target name="init" depends="clean">
+        <mkdir dir="${out}"/>
+        <mkdir dir="${out}/bin"/>
+        <mkdir dir="${buildTest}"/>
+        <mkdir dir="${package}"/>
+    </target>
+
+    <target name="compile" depends="init">
+        <javac srcdir="${src}" destdir="${out}/bin">
+            <classpath>
+                <pathelement path="${comfyj-lib}/comfyj-2.10.jar"/>
+                <pathelement path="${comfyj-lib}/commons-cli-1.0.jar"/>
+                <pathelement path="${comfyj-lib}/jniwrap-3.8.4.jar"/>
+                <pathelement path="${comfyj-lib}/slf4j-api-1.5.8.jar"/>
+                <pathelement path="${comfyj-lib}/slf4j-simple-1.5.8.jar"/>
+                <pathelement path="${comfyj-lib}/winpack-3.8.4.jar"/>
+            </classpath>
+        </javac>
+        <javac srcdir="${test}" destdir="${buildTest}">
+            <classpath>
+                <pathelement path="C:/Program Files (x86)/JetBrains/IntelliJ IDEA Community Edition 12.0.1/lib/junit-4.10.jar"/>
+                <pathelement path="${out}/bin"/>
+            </classpath>
+        </javac>
+    </target>
+
+    <target name="package" depends="compile" description="Create jar-file">
+        <jar jarfile="${package}/wmpcomponent.jar" basedir="${out}/bin"/>
+    </target>
+
+    <target name="test" depends="package">
+        <copy file="./../Wildlife.wmv" tofile="Wildlife.wmv"/>
+        <copy file="./../textfile.txt" tofile="textfile.txt"/>
+        <junit fork="yes" haltonfailure="yes">
+            <jvmarg value="-Djava.library.path=${comfyj-bin}"/>
+            <classpath>
+                <pathelement path="${comfyj-lib}/comfyj-2.10.jar"/>
+                <pathelement path="${comfyj-lib}/commons-cli-1.0.jar"/>
+                <pathelement path="${comfyj-lib}/jniwrap-3.8.4.jar"/>
+                <pathelement path="${comfyj-lib}/slf4j-api-1.5.8.jar"/>
+                <pathelement path="${comfyj-lib}/slf4j-simple-1.5.8.jar"/>
+                <pathelement path="${comfyj-lib}/winpack-3.8.4.jar"/>
+                <pathelement path="${idea-lib}/junit-4.10.jar"/>
+                <pathelement path="${buildTest}"/>
+                <pathelement path="${package}/wmpcomponent.jar"/>
+            </classpath>
+            <formatter type="plain" usefile="false" />
+
+
+            <test name="teamdev.wmplayer.tests.FileOpeningTest"/>
+            <test name="teamdev.wmplayer.tests.ListenersTest"/>
+            <test name="teamdev.wmplayer.tests.MouseEventsTest"/>
+            <test name="teamdev.wmplayer.tests.PlayerEventsTest"/>
+            <test name="teamdev.wmplayer.tests.PlayingPositionTest"/>
+            <test name="teamdev.wmplayer.tests.PlayStateTest"/>
+            <test name="teamdev.wmplayer.tests.SwingUITest"/>
+
+        </junit>
+        <delete file="Wildlife.wmv"/>
+        <delete file="textfile.txt"/>
+    </target>
+    <target name="clean">
+        <delete dir="${out}"/>
+        <delete dir="${package}"/>
+        <delete file="Wildlife.wmv"/>
+        <delete file="textfile.txt"/>
+    </target>
+</project>
