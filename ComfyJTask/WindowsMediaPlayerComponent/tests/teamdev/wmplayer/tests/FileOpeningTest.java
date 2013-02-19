@@ -49,7 +49,10 @@ public class FileOpeningTest {
 
     @After
     public void performCleanup() {
-        wmPlayerComponent.destroy();
+        if (wmPlayerComponent != null) {
+            wmPlayerComponent.destroy();
+
+        }
         frame.dispose();
     }
 }

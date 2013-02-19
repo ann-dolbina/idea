@@ -1,11 +1,7 @@
 package teamdev.wmplayer.tests;
 
-import com.jniwrapper.Function;
-import com.jniwrapper.Int;
 import com.jniwrapper.UInt32;
-import com.jniwrapper.UInt8;
 import com.jniwrapper.win32.Msg;
-import com.jniwrapper.win32.hook.*;
 import com.jniwrapper.win32.ui.Wnd;
 import org.junit.After;
 import org.junit.Before;
@@ -40,6 +36,7 @@ public class MouseEventsTest {
     private static final int VK_ESCAPE = 27;
     private static final int VK_CONTROL = 0x00000011;
     private static final int VK_SHIFT = 0x00000010;
+    private static final int HTCLIENT = 1;
     private JFrame frame;
     private WMPlayerComponent wmPlayerComponent;
     private Wnd playerWnd;
@@ -55,21 +52,11 @@ public class MouseEventsTest {
         java.util.List<Wnd> windows = retrieveAllChildWindowsOfClass(new Wnd(wmPlayerComponent), "ATL");
         if (windows.isEmpty()) throw new RuntimeException("Player window not found");
         playerWnd = windows.get(0);
-        playerWnd.show(Wnd.ShowWindowCommand.SHOWNORMAL);
-        Hook.CALLWNDPROC.addListener(new HookEventListener() {
-            @Override
-            public void onHookEvent(HookEventObject hookEventObject) {
-                CallWndProcEvent event = (CallWndProcEvent) hookEventObject;
-                System.out.println("Message: " + event.getMessage());
-                System.out.println("LParam:" + event.getLParam());
-                System.out.println("WParam:" + event.getWParam() + "\n");
-            }
-        });
-        EventsFilter filter = new EventsFilter();
-        filter.setAllowAllEvents(true);
-        filter.addWindow(playerWnd, true);
-        Hook.CALLWNDPROC.install();
-        Hook.CALLWNDPROC.setFilter(filter);
+       /* try {
+            Thread.sleep(15000);
+        } catch (Exception e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }*/
 
     }
 
@@ -209,7 +196,6 @@ public class MouseEventsTest {
         wmPlayerComponent.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                System.out.println(e.isControlDown());
                 if (e.isControlDown()) {
                     receivedKey.set(true);
                     synchronized (frame) {
@@ -223,7 +209,7 @@ public class MouseEventsTest {
 
         synchronized (frame) {
             try {
-                frame.wait(TIMEOUT);
+                frame.wait(TIMEOUT*4);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -286,7 +272,6 @@ public class MouseEventsTest {
 
     @After
     public void performCleanup() {
-        Hook.CALLWNDPROC.uninstall();
         wmPlayerComponent.destroy();
         frame.dispose();
     }
@@ -304,6 +289,10 @@ public class MouseEventsTest {
     private void sendRightButtonMouseClickToComponent() {
         playerWnd.sendMessage(Msg.WM_RBUTTONDOWN, new UInt32(MK_RBUTTON), new UInt32(makeMousePositionLParam(X, Y)));
         playerWnd.sendMessage(Msg.WM_RBUTTONUP, new UInt32(0), new UInt32(makeMousePositionLParam(X, Y)));
+        /*long res=Function.call("user32", "keybd_event",null,new UInt8((short)VK_ESCAPE),new UInt8((short)0x1),new UInt32(0),new Int(0));
+        System.out.println(new LastErrorException(res).getMessage());
+        res=Function.call("user32", "keybd_event",null,new UInt8((short)VK_ESCAPE),new UInt8((short)0x1),new UInt32(2),new Int(0));
+        System.out.println(new LastErrorException(res).getMessage());*/
     }
 
     private void sendLeftButtonMouseDoubleClickToComponent() {
@@ -318,13 +307,23 @@ public class MouseEventsTest {
     }
 
     private void sendCtrlLeftClickToComponent() {
-
-        long res=Function.call("user32", "keybd_event",null,new UInt8((short)VK_CONTROL),new UInt8((short)0x1D),new UInt32(0),new Int(0));
-        //playerWnd.sendMessage(Msg.WM_KEYDOWN, new UInt32(VK_CONTROL), new UInt32(0x401D0001));
-        playerWnd.sendMessage(Msg.WM_LBUTTONDOWN, new UInt32(MK_CONTROL | MK_LBUTTON), new UInt32(makeMousePositionLParam(X, Y)));
-        playerWnd.sendMessage(Msg.WM_LBUTTONUP, new UInt32(MK_CONTROL), new UInt32(makeMousePositionLParam(X, Y)));
-        //playerWnd.sendMessage(Msg.WM_KEYUP, new UInt32(VK_CONTROL), new UInt32(0xC01D0001));
-        res=Function.call("user32", "keybd_event",null,new UInt8((short)VK_CONTROL),new UInt8((short)0x1D),new UInt32(2),new Int(0));
+        Wnd playerParentWnd=new Wnd(frame);
+        try {
+            playerWnd.postMessage(Msg.WM_KEYDOWN, VK_CONTROL, 0x001D0001);
+            Thread.sleep(TIMEOUT);
+            playerWnd.sendMessage(Msg.WM_MOUSEACTIVATE, playerParentWnd, new UInt32((Msg.WM_LBUTTONDOWN << 16) | HTCLIENT));
+            playerWnd.sendMessage(Msg.WM_SETCURSOR, playerWnd, new UInt32((Msg.WM_LBUTTONDOWN << 16) | HTCLIENT));
+            playerWnd.postMessage(Msg.WM_LBUTTONDOWN, MK_CONTROL | MK_LBUTTON, makeMousePositionLParam(X, Y));
+            Thread.sleep(TIMEOUT);
+            playerWnd.sendMessage(Msg.WM_SETCURSOR, playerWnd, new UInt32((Msg.WM_MOUSEMOVE << 16) | HTCLIENT));
+            playerWnd.postMessage(Msg.WM_MOUSEMOVE, MK_CONTROL | MK_LBUTTON, makeMousePositionLParam(X, Y));
+            Thread.sleep(TIMEOUT);
+            playerWnd.sendMessage(Msg.WM_SETCURSOR, playerWnd, new UInt32((Msg.WM_LBUTTONUP << 16) | HTCLIENT));
+            playerWnd.postMessage(Msg.WM_LBUTTONUP, MK_CONTROL, makeMousePositionLParam(X, Y));
+            playerWnd.postMessage(Msg.WM_KEYUP, VK_CONTROL, 0xC01D0001);
+        } catch (InterruptedException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
     }
 
     private void sendAltLeftClickToComponent() {
@@ -338,11 +337,11 @@ public class MouseEventsTest {
 
     private void sendShiftLeftClickToComponent() {
         //long res=Function.call("user32", "keybd_event",null,new UInt8((short)VK_SHIFT),new UInt8((short)0x2A),new UInt32(0),new Int(0));
-        //playerWnd.postMessage(Msg.WM_KEYDOWN, new UInt32(VK_SHIFT), new UInt32(0x402A0001));
+        //playerWnd.sendMessage(Msg.WM_KEYDOWN, new UInt32(VK_SHIFT), new UInt32(0x402A0001));
         playerWnd.postMessage(Msg.WM_KEYDOWN, VK_SHIFT, 0x402A0001);
-        /*playerWnd.sendMessage(Msg.WM_LBUTTONDOWN, new UInt32(MK_SHIFT | MK_LBUTTON), new UInt32(makeMousePositionLParam(X, Y)));
-        playerWnd.sendMessage(Msg.WM_LBUTTONUP, new UInt32(MK_SHIFT), new UInt32(makeMousePositionLParam(X, Y)));
-        */playerWnd.postMessage(Msg.WM_LBUTTONDOWN, MK_SHIFT | MK_LBUTTON, makeMousePositionLParam(X, Y));
+        //playerWnd.sendMessage(Msg.WM_LBUTTONDOWN, new UInt32(MK_SHIFT | MK_LBUTTON), new UInt32(makeMousePositionLParam(X, Y)));
+        playerWnd.postMessage(Msg.WM_LBUTTONDOWN, MK_SHIFT | MK_LBUTTON, makeMousePositionLParam(X, Y));
+        //playerWnd.sendMessage(Msg.WM_LBUTTONUP, new UInt32(MK_SHIFT), new UInt32(makeMousePositionLParam(X, Y)));
         playerWnd.postMessage(Msg.WM_LBUTTONUP, MK_SHIFT, makeMousePositionLParam(X, Y));
         //playerWnd.sendMessage(Msg.WM_KEYUP, new UInt32(VK_SHIFT), new UInt32(0xC02A0001));
         playerWnd.postMessage(Msg.WM_KEYUP, VK_SHIFT, 0xC02A0001);
